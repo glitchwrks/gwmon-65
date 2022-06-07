@@ -9,7 +9,7 @@ Currently GWMON-65 targets the [Glitch Works R6501Q SBC](https://www.tindie.com/
 
 ### Vectors
 
-Vectors provide consistent entry points to GWMON-80. Starting with GWMON-80 0.9, vectors are provided at the beginning of the monitor in the form of a jump table. Standard vectors are:
+Vectors provide consistent entry points to GWMON-65. Vectors are provided at the beginning of the monitor in the form of a jump table. Standard vectors are:
 
 * `CSTART` at `ORG + 0`: cold start routine
 * `WSTART` at `ORG + 3`: warm start routine
