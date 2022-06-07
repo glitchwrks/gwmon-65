@@ -1,0 +1,188 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Glitch Works Monitor for 6502 and Compatibles
+;
+;Customized for Glitch Works R65X1Q SBC.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Rockwell 6501/6511 Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SCCR		= $15		;Serial Communications Control Register
+SCSR		= $16		;Serial Communications Status Register
+SCDAT		= $17		;Serial Channel Data Register
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;ASCII Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+NULL		= $00
+CTRLC		= $03
+LF		= $0A
+CR		= $0D
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Miscellaneous Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CANCEL		= CTRLC		;ASCII code to use for cancelling current line
+				;Default is CTRL+C
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Zero Page Storage
+;
+;The Rockwell R6501 and R6511 are 6502 core, but zero page
+;has some differences:
+;
+; * RAM starts at 0x0040, internal to CPU
+; * Stack located in zero page
+; * I/O and control registers in zero page below 0x0040
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+STRL		= $50
+STRH		= $51
+
+	.org	$1000
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;VECTORS -- Jump Table Vectors
+;
+;These vectors are consistent across all versions of
+;GWMON-65
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+JMPTAB:	JMP	SETUP		;Cold start, initializes hardware
+	JMP	WSTART		;Warm start
+	JMP	COUT		;Output A register to console
+	JMP	CIN		;Input A register from console, waits
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SETUP -- Start of the actual Woz monitor
+;
+;Falls through to SETBR.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SETUP:	SEI			;Disable interrupts
+	CLD			;Clear decimal arithmetic mode.
+	LDX	#$FF		;Set up stack pointer
+	TXS
+
+	LDA	#<SIGNON	;Set up pointers to signon message
+	STA	STRL
+	LDA	#>SIGNON
+	STA	STRH
+	JSR	PRTSTR		;Print signon message
+
+WSTART:
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CMDLP -- Small command processor loop
+;
+;Get a character from the console device and immediately
+;hande it by passing off to helper function.
+;
+;Falls through to ERROR if an invalid command is specified.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CMDLP:	LDA	#<PROMPT	;Set up pointers to command prompt
+	STA	STRL
+	LDA	#>PROMPT
+	STA	STRH
+	JSR	PRTSTR		;Print command prompt
+	JSR	CIN
+	ORA	#$20		;Downcase input
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;ERROR -- Print generic error message and abort
+;
+;Falls through to PRTERR.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ERROR:	LDA	#<ERRSTR
+	STA	STRL
+	LDA	#>ERRSTR
+	STA	STRH
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTERR -- Print a null-terminated error string
+;
+;pre: STRL, STRH point to a null-terminated string
+;post: string at STRL, STRH printed to console
+;post: program execution returned to command loop   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTERR:	JSR	PRTCLS
+	JMP	WSTART
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CIN -- Get a character from the console
+;
+;Blocks until a character is available. Warm starts the
+;monitor if the received character is the CANCEL char.
+;
+;pre: serial UART initialized
+;post: A register contains received character
+;post: monitor warm started if CANCEL received
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CIN:	LDA	SCSR		;See if we got an incoming char
+	AND	#$01		;Test bit 0
+	BEQ	CIN		;Wait for character
+	LDA	SCDAT		;Load char
+	CMP	#CANCEL		;CANCEL ASCII code?
+	BNE	CIN1		;No, return with char
+	JMP	WSTART		;Yes, warm start
+CIN1:	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;COUT -- Print a character to the console
+;
+;Strips parity, preserves A register.
+;
+;pre: A register contains character to print
+;post: character printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+COUT:	PHA			;Save A register
+COUT1:	LDA	SCSR		;Get UART status
+	AND	#$40		;Mask off XMTR Data Reg Empty
+	BEQ	COUT1		;Transmitter busy, wait
+	PLA			;A = character to print
+	PHA			;Back on stack
+	STA	SCDAT		;Send it to UART
+	PLA			;A = original character to send
+	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CRLF -- Print a CR, LF
+;
+;Returns through COUT.
+;
+;pre: none
+;post: CR, LF printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CRLF:	LDA	#CR
+	JSR	COUT
+	LDA	#LF
+	JMP	COUT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTCLS -- Print CR, LF, and a high bit terminated string
+;
+;Falls through to PRTSTR
+;
+;pre: HL contains pointer to start of string
+;post: CR, LF, and string at HL printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTCLS:	JSR	CRLF
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTSTR -- Print a NULL-terminated string
+;
+;pre: STRL, STRH point to NULL terminated string
+;post: string printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTSTR:	LDY	#$0		;Clear string position counter
+PRTST1:	LDA	(STRL),Y	;A = next char in string
+	BEQ	PRTST2		;A = NULL, done
+	JSR	COUT
+	INY			;Increment string position counter
+	BNE	PRTST1		;Not done, keep going
+PRTST2:	RTS 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Message Strings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SIGNON:	.byte	"GWMON-65 0.1 SM", CR, LF, NULL
+PROMPT:	.byte	LF, '>', NULL
+ERRSTR:	.byte	"ERROR", NULL
