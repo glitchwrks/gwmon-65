@@ -1,7 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Glitch Works Monitor for 6502 and Compatibles
 ;
-;Customized for Glitch Works R65X1Q SBC.
+;Customized for Glitch Works R65X1Q SBC. This is development
+;code and expects the R65X1Q SBC is already initialized from
+;eWoz.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,8 +37,13 @@ CANCEL		= CTRLC		;ASCII code to use for cancelling current line
 ; * Stack located in zero page
 ; * I/O and control registers in zero page below 0x0040
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-STRL		= $50
-STRH		= $51
+STRLO		= $50		;Low string pointer for PRTSTR
+STRHI		= $51		;High string point for PRTSTR
+ADRLO		= $52		;Low address byte from GETADR
+ADRHI		= $53		;High address byte from GETADR
+NIBLO		= $54
+NIBHI		= $55
+TEMP		= $5F
 
 	.org	$1000
 
@@ -52,9 +59,9 @@ JMPTAB:	JMP	SETUP		;Cold start, initializes hardware
 	JMP	CIN		;Input A register from console, waits
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;SETUP -- Start of the actual Woz monitor
+;SETUP -- Prepare hardware, print monitor sign-on message
 ;
-;Falls through to SETBR.
+;Falls through to WSTART.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SETUP:	SEI			;Disable interrupts
 	CLD			;Clear decimal arithmetic mode.
@@ -62,11 +69,14 @@ SETUP:	SEI			;Disable interrupts
 	TXS
 
 	LDA	#<SIGNON	;Set up pointers to signon message
-	STA	STRL
+	STA	STRLO
 	LDA	#>SIGNON
-	STA	STRH
-	JSR	PRTSTR		;Print signon message
+	STA	STRHI
+	JSR	PRTCLS		;Print signon message
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;WSTART -- War start the monitor
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 WSTART:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -74,17 +84,30 @@ WSTART:
 ;
 ;Get a character from the console device and immediately
 ;hande it by passing off to helper function.
-;
-;Falls through to ERROR if an invalid command is specified.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CMDLP:	LDA	#<PROMPT	;Set up pointers to command prompt
-	STA	STRL
+CMDLP:	LDA	#>WSTART	;Prime stack for RTS
+	PHA
+	LDA	#<WSTART-1	;Remember to decrement low byte!
+	PHA
+	LDA	#<PROMPT	;Set up pointers to command prompt
+	STA	STRLO
 	LDA	#>PROMPT
-	STA	STRH
-	JSR	PRTSTR		;Print command prompt
+	STA	STRHI
+	JSR	PRTCLS		;Print command prompt
 	JSR	CIN
 	ORA	#$20		;Downcase input
 
+	LDY	#$FF		;Index before start of CMDTAB
+CMDLP1:	INY			;Point to next command char
+	CMP	CMDTAB, Y
+	BEQ	RUNCMD
+	PHA			;Save command letter
+	LDA	CMDTAB, Y
+	BEQ	ERROR		;CMDTAB null terminator, error
+	PLA			;Restore command letter
+	INY			;Get past handler address
+	INY
+	JMP	CMDLP1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;ERROR -- Print generic error message and abort
@@ -92,27 +115,147 @@ CMDLP:	LDA	#<PROMPT	;Set up pointers to command prompt
 ;Falls through to PRTERR.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ERROR:	LDA	#<ERRSTR
-	STA	STRL
+	STA	STRLO
 	LDA	#>ERRSTR
-	STA	STRH
+	STA	STRHI
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTERR -- Print a null-terminated error string
 ;
-;pre: STRL, STRH point to a null-terminated string
-;post: string at STRL, STRH printed to console
+;pre: STRLO, STRHI point to a null-terminated string
+;post: string at STRLO, STRHI printed to console
 ;post: program execution returned to command loop   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTERR:	JSR	PRTCLS
 	JMP	WSTART
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;CIN -- Get a character from the console
+;RUNCMD -- Run a command handler from CMDTAB
+;
+;pre: Y contains index into CMDTAB to command letter
+;post: control transferred to command handler
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+RUNCMD:	JSR	PRTSPC
+	INY
+	LDA	CMDTAB, Y
+	STA	ADRLO
+	INY
+	LDA	CMDTAB, Y
+	STA	ADRHI
+	JMP	(ADRLO)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;GETADR -- Get a 16-bit address from the console
+;
+;pre: none
+;post: ADRLO and ADRHI contain address from console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GETADR:	JSR	GETHEX
+	STA	ADRHI
+	JSR	GETHEX
+	STA	ADRLO
+	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;GETHEX -- Get byte from console as hex
+;
+;Enter at GETHE2 with character in A register from EDTCMD.
+;
+;pre: none
+;post: A register contains byte from hex input
+;post: Carry flag set if non hex character received
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GETHEX:	JSR	CIN
+GETHE2:	STA	NIBHI
+	JSR	CIN
+	STA	NIBLO
+	JSR	HEXBYT
+	BCS	GETHE3
+	RTS
+GETHE3:	JMP	ERROR
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;HEXBYT -- Convert pair of ASCII characters to byte
+;
+;Destroys contents of TEMP.
+;
+;pre: NIBHI and NIBLO contain ASCII coded chars to convert
+;post: A register contains converted byte
+;post: CY flag set if non-hex character input
+;post: Z flag set if conversion results in 0x00
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+HEXBYT:	LDA	NIBHI
+	JSR	ASCHEX
+	BCC	HEXBY1
+	RTS
+HEXBY1:	ASL
+	ASL
+	ASL
+	ASL
+	STA	TEMP
+	LDA	NIBLO
+	JSR	ASCHEX
+	BCC	HEXBY2
+	RTS
+HEXBY2:	ORA	TEMP
+	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;ASCHEX -- Convert ASCII character to hex nybble
+;
+;pre: A register contains ASCII coded nybble
+;post: A register contains nybble
+;post: CY flag set if ASCII character is invalid hex
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ASCHEX:	SEC
+	SBC	#'0'		;ASCII to decimal bias
+	BCS	ASCHE1
+	SEC			;Error, less than '0', done
+	RTS
+ASCHE1:	CMP	#$0A
+	BCS	ASCHE2
+	RTS			;0x0 - 0x9, done
+ASCHE2:	AND	#$5F		;Upcase
+	SEC
+	SBC	#$07		;ASCII to hex bias
+	CMP	#$10
+	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;GOCMD -- Call out to a specified address
+;
+;The stack is primed with the GWMON-65 warm start address.
+;Called program can return control to GWMON-65 through a 
+;RTS as long as the stack is not disturbed.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GOCMD:	JSR	GETADR		;ADRLO, ADRHI = address to call
+	JMP	(ADRLO)		;Jump indirect to address read
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CMDTAB -- Table/array of commands
+;
+;Table entry structure:
+;    * Single command character, lowercase only
+;    * Pointer to implementation routine
+;
+;The last entry should contain 0x00 for the command char and
+;no additional address.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CMDTAB:	.byte	'g'
+	.word	GOCMD
+	.byte	$00
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CIN -- Get a character from the console and echo
 ;
 ;Blocks until a character is available. Warm starts the
 ;monitor if the received character is the CANCEL char.
 ;
+;Falls through to COUT if the character received is not the
+;CANCEL character.
+;
 ;pre: serial UART initialized
+;post: character is echoed to the console
 ;post: A register contains received character
 ;post: monitor warm started if CANCEL received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -121,9 +264,8 @@ CIN:	LDA	SCSR		;See if we got an incoming char
 	BEQ	CIN		;Wait for character
 	LDA	SCDAT		;Load char
 	CMP	#CANCEL		;CANCEL ASCII code?
-	BNE	CIN1		;No, return with char
-	JMP	WSTART		;Yes, warm start
-CIN1:	RTS
+	BNE	COUT		;No, echo and return
+	JMP	WSTART		;Yes, warm start	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;COUT -- Print a character to the console
@@ -142,6 +284,17 @@ COUT1:	LDA	SCSR		;Get UART status
 	STA	SCDAT		;Send it to UART
 	PLA			;A = original character to send
 	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTSPC -- Print a space to the console
+;
+;Returns through COUT.
+;
+;pre: none
+;post: ASCII space printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTSPC:	LDA	#' '
+	JMP	COUT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CRLF -- Print a CR, LF
@@ -169,11 +322,11 @@ PRTCLS:	JSR	CRLF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTSTR -- Print a NULL-terminated string
 ;
-;pre: STRL, STRH point to NULL terminated string
+;pre: STRLO, STRHI point to NULL terminated string
 ;post: string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTSTR:	LDY	#$0		;Clear string position counter
-PRTST1:	LDA	(STRL),Y	;A = next char in string
+PRTST1:	LDA	(STRLO),Y	;A = next char in string
 	BEQ	PRTST2		;A = NULL, done
 	JSR	COUT
 	INY			;Increment string position counter
@@ -183,6 +336,6 @@ PRTST2:	RTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Message Strings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-SIGNON:	.byte	"GWMON-65 0.1 SM", CR, LF, NULL
+SIGNON:	.byte	"GWMON-65 0.1 SM", NULL
 PROMPT:	.byte	LF, '>', NULL
 ERRSTR:	.byte	"ERROR", NULL
