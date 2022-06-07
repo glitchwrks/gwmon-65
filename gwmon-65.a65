@@ -229,7 +229,7 @@ ASCHE2:	AND	#$5F		;Upcase
 ;HEXDMP -- Hex dump memory to console
 ;
 ;This routine prints the contents of memory starting at
-;ADRLO, ADRHI. It prints consecutive 16-byte blocks.
+;ADRLO, ADRHI and ending at ENDLO, ENDHI in 16-byte blocks.
 ;
 ;pre: ADRLO, ADRHI contains starting address
 ;pre: ENDLO, ENDHI register pair contains ending address
