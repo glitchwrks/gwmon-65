@@ -41,9 +41,11 @@ STRLO		= $50		;Low string pointer for PRTSTR
 STRHI		= $51		;High string point for PRTSTR
 ADRLO		= $52		;Low address byte from GETADR
 ADRHI		= $53		;High address byte from GETADR
-NIBLO		= $54
-NIBHI		= $55
-TEMP		= $5F
+NIBLO		= $54		;Low nybble for ASCII to hex conversion
+NIBHI		= $55		;High nybble for ASCII to hex conversion
+ENDLO		= $56		;Low address byte for two-address commands
+ENDHI		= $57		;High address byte for two-address commands
+TEMP		= $5F		;Temporary storage
 
 	.org	$1000
 
@@ -222,6 +224,126 @@ ASCHE2:	AND	#$5F		;Upcase
 	RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;HEXDMP -- Hex dump memory to console
+;
+;pre: ADRLO, ADRHI contains starting address
+;pre: ENDLO, ENDHI register pair contains ending address
+;post: contents of memory printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+HEXDMP:	JSR	CRLF
+	JSR	DUMP16
+	BCS	HEXDM2		;Carry set, high byte rollover, done
+	LDA	ADRHI		;A = high byte of current address
+	CMP	ENDHI
+	BCC	HEXDM1		;Less than, continue
+	BEQ	HEXDM1		;Equal, continue
+	RTS
+HEXDM1:	LDA	ADRLO		;A = low byte of current address
+	CMP	ENDLO
+	BCC	HEXDMP		;Less than, dump another line
+HEXDM2:	RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;DUMP16 -- Dump 16 consecutive memory locations as hex
+;
+;pre: ARDLO, ARDHI contains starting memory address
+;post: 16 consecutive memory locations printed to console
+;post: ADRLO, ADRHI incremented by 16
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DUMP16:	JSR	PRTADR
+	LDX	#16		;X = loop counter
+DUMP11:	JSR	PRTSPC
+	JSR	DMPLOC
+	INC	ADRLO
+	BNE	DUMP12
+	INC	ADRHI
+	BNE	DUMP12		;No high byte overflow, keep going
+	SEC			;Set carry to indicate overflow
+	RTS
+DUMP12:	DEX
+	BNE	DUMP11	
+	RTS
+DUMP13:	JMP	WSTART
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTADR -- Print an address to the console
+;
+;Prints a 16-bit address, a space, and a colon. Destroys
+;A register contents.
+;
+;Returns through COUT.
+;
+;pre: ADRLO, ADRHI contains address to print
+;post: address printed to console as hex
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTADR: LDA	ADRHI
+	JSR	PRTHEX
+	LDA	ADRLO
+	JSR	PRTHEX
+	LDA	#':'
+	JMP	COUT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;DMPLOC -- Print a byte at HL to console
+;
+;Destroys A and Y register contents.
+;
+;Falls through to PRTHEX.
+;
+;pre: ADRLO, ADRHI contains address of byte
+;post: byte printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DMPLOC:	LDY	#$00
+	LDA	(ADRLO), Y
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTHEX -- Output byte to console as hex
+;
+;Falls through to PRTNIB.
+;
+;pre: A register contains byte to be output
+;post: byte is output to console as hex
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTHEX: PHA			;Save A register on stack
+	LSR			;Rotate high nybble down
+	LSR
+	LSR
+	LSR
+	JSR	PRTNIB		;Print high nybble
+	PLA			;Restore A register
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;PRTNIB -- Print hex nybble on console
+;
+;Returns through COUT.
+;
+;pre: A register contains nybble
+;post: nybble printed to console
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRTNIB:	AND	#$0F
+	ORA	#'0'		;Add ASCII bias
+	CMP	#':'		;0x0 - 0x9?
+	BCC	COUT
+	ADC	#$06		;Add hex bias
+	JMP	COUT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;HDCMD -- Hex dump command
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+HDCMD:	JSR	GETADR		;ADRLO, ADRHI = start address
+	LDX	ADRLO		;Save them in X and Y
+	LDY	ADRHI
+	JSR	PRTSPC
+	JSR	GETADR		;ADRLO, ADRHI = end address
+	LDA	ADRLO		;Move them to ENDLO, ENDHI
+	STA	ENDLO
+	LDA	ADRHI
+	STA	ENDHI
+	STX	ADRLO		;ADRLO, ADRHI = start address
+	STY	ADRHI
+	JMP	HEXDMP		;Return through HEXDMP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;GOCMD -- Call out to a specified address
 ;
 ;The stack is primed with the GWMON-65 warm start address.
@@ -241,7 +363,9 @@ GOCMD:	JSR	GETADR		;ADRLO, ADRHI = address to call
 ;The last entry should contain 0x00 for the command char and
 ;no additional address.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CMDTAB:	.byte	'g'
+CMDTAB:	.byte	'd'
+	.word	HDCMD
+	.byte	'g'
 	.word	GOCMD
 	.byte	$00
 
