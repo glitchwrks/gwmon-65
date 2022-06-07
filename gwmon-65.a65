@@ -26,6 +26,8 @@ CR		= $0D
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CANCEL		= CTRLC		;ASCII code to use for cancelling current line
 				;Default is CTRL+C
+NEXTLOC		= CR		;Keystroke for next location in E
+				;Defaults to CR
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Zero Page Storage
@@ -226,44 +228,38 @@ ASCHE2:	AND	#$5F		;Upcase
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;HEXDMP -- Hex dump memory to console
 ;
+;This routine prints the contents of memory starting at
+;ADRLO, ADRHI. It prints consecutive 16-byte blocks.
+;
 ;pre: ADRLO, ADRHI contains starting address
 ;pre: ENDLO, ENDHI register pair contains ending address
 ;post: contents of memory printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-HEXDMP:	JSR	CRLF
-	JSR	DUMP16
-	BCS	HEXDM2		;Carry set, high byte rollover, done
-	LDA	ADRHI		;A = high byte of current address
-	CMP	ENDHI
-	BCC	HEXDM1		;Less than, continue
-	BEQ	HEXDM1		;Equal, continue
-	RTS
-HEXDM1:	LDA	ADRLO		;A = low byte of current address
-	CMP	ENDLO
-	BCC	HEXDMP		;Less than, dump another line
-HEXDM2:	RTS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;DUMP16 -- Dump 16 consecutive memory locations as hex
-;
-;pre: ARDLO, ARDHI contains starting memory address
-;post: 16 consecutive memory locations printed to console
-;post: ADRLO, ADRHI incremented by 16
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-DUMP16:	JSR	PRTADR
-	LDX	#16		;X = loop counter
-DUMP11:	JSR	PRTSPC
+HEXDMP:	LDA	#$00		;Initialize TEMP as completion flag
+	STA	TEMP
+HEXDM1:	JSR	CRLF
+	JSR	PRTADR
+	LDX	#16		;X = line loop counter
+HEXDM2:	JSR	PRTSPC
 	JSR	DMPLOC
-	INC	ADRLO
-	BNE	DUMP12
+
+	LDA	ADRLO		;Compare addresses, see if we just
+	CMP	ENDLO		;printed the ending location
+	BNE	HEXDM3		;Not done, dump more
+	LDA	ADRHI		;Low bytes the same, check high bytes
+	CMP	ENDHI
+	BNE	HEXDM3		;Not done, dump more
+	DEC	TEMP		;TEMP = nonzero, done
+
+HEXDM3:	INC	ADRLO		;Increment the current dump location
+	BNE	HEXDM4
 	INC	ADRHI
-	BNE	DUMP12		;No high byte overflow, keep going
-	SEC			;Set carry to indicate overflow
+HEXDM4:	DEX			;Decrement line loop counter
+	BNE	HEXDM2		;Not zero, print more on this line
+
+	LDA	TEMP		;Get completion flag
+	BEQ	HEXDM1		;Haven't hit ENDLO, ENDHI yet, do more
 	RTS
-DUMP12:	DEX
-	BNE	DUMP11	
-	RTS
-DUMP13:	JMP	WSTART
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTADR -- Print an address to the console
@@ -344,6 +340,30 @@ HDCMD:	JSR	GETADR		;ADRLO, ADRHI = start address
 	JMP	HEXDMP		;Return through HEXDMP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;EDTCMD -- Edit memory command
+;
+;Breaks out to main command loop through GETHEX jump to
+;WSTART.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+EDTCMD:	JSR	GETADR		;HL = address to open
+EDTCM1:	JSR	CRLF
+	JSR	PRTADR		;Print location address
+	JSR	PRTSPC
+	JSR	DMPLOC		;Print contents of location
+	JSR	PRTSPC
+	JSR	CIN		;Get user input
+	CMP	#NEXTLOC	;Check for NEXTLOC character
+	BEQ	EDTCM2		;Yes, go to next location
+	JSR	GETHE2		;No, process as hex input
+	STA	(ADRLO), Y
+	JSR	PRTSPC
+	JSR	DMPLOC		;Print contents of location (verification)
+EDTCM2:	INC	ADRLO
+	BNE	EDTCM1
+	INC	ADRHI
+	JMP	EDTCM1
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;GOCMD -- Call out to a specified address
 ;
 ;The stack is primed with the GWMON-65 warm start address.
@@ -365,6 +385,8 @@ GOCMD:	JSR	GETADR		;ADRLO, ADRHI = address to call
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CMDTAB:	.byte	'd'
 	.word	HDCMD
+	.byte	'e'
+	.word	EDTCMD
 	.byte	'g'
 	.word	GOCMD
 	.byte	$00
