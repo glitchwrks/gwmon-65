@@ -16,6 +16,34 @@ Vectors provide consistent entry points to GWMON-80. Starting with GWMON-80 0.9,
 * `COUT` at `ORG + 6`: output a character to console
 * `CIN` at `ORG + 9`: wait for and input a character from console
 
+SM Command Syntax
+-----------------
+
+The Small Monitor (`SM`) command syntax is as follows:
+
+    G XXXX          GO starting at address XXXX
+
+`CTRL+C` may be pressed at any text entry point to cancel the current operation. Hexadecimal inputs are validated, entering a non-hex character will cancel the current operation with an `ERROR` message.
+
+The `SM` command processor automatically inserts the spaces after each element. So, to dump memory from `0x0000` to `0x000F` you'd type
+
+    d0000000f
+
+...and you'd get
+
+    >d 0000 000F
+    0000 : xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx
+    
+    >
+
+...where the xx fields are the hex representation of the bytes at those addresses.
+
+No returns or spaces are typed in the commands. This is very similar to the NorthStar ROM monitor, most likely because it's about the simplest way to implement. Input is auto-downcased, so you can type entries in either (or even mixed) case.
+
+### GO Command
+
+`G` prompts for an address and transfers control to that address. The GWMON-65 warm start address is placed on the stack prior to control transfer, so routines may return to GWMON-65 with a `RTS` as long as the stack has been preserved.
+
 Building GWMON-65
 -----------------
 
