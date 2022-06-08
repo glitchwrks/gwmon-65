@@ -21,6 +21,8 @@ SM Command Syntax
 
 The Small Monitor (`SM`) command syntax is as follows:
 
+    D XXXX YYYY     Dump memory from XXXX to YYYY
+    E XXXX          Edit memory starting at XXXX (CTRL+C to end)
     G XXXX          GO starting at address XXXX
 
 `CTRL+C` may be pressed at any text entry point to cancel the current operation. Hexadecimal inputs are validated, entering a non-hex character will cancel the current operation with an `ERROR` message.
@@ -39,6 +41,10 @@ The `SM` command processor automatically inserts the spaces after each element. 
 ...where the xx fields are the hex representation of the bytes at those addresses.
 
 No returns or spaces are typed in the commands. This is very similar to the NorthStar ROM monitor, most likely because it's about the simplest way to implement. Input is auto-downcased, so you can type entries in either (or even mixed) case.
+
+### Edit Memory
+
+The `E` command prompts for a starting address, displays the contents of the memory location, and allows input of a replacement value. Pressing `RETURN` will leave the current value unchanged and move to the next memory address. Pressing `CTRL+C` at any time terminates the `E` command.
 
 ### GO Command
 
