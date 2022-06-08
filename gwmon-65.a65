@@ -44,9 +44,8 @@ STRHI		= $51		;High string point for PRTSTR
 ADRLO		= $52		;Low address byte from GETADR
 ADRHI		= $53		;High address byte from GETADR
 NIBLO		= $54		;Low nybble for ASCII to hex conversion
-NIBHI		= $55		;High nybble for ASCII to hex conversion
-ENDLO		= $56		;Low address byte for two-address commands
-ENDHI		= $57		;High address byte for two-address commands
+ENDLO		= $55		;Low address byte for two-address commands
+ENDHI		= $56		;High address byte for two-address commands
 TEMP		= $5F		;Temporary storage
 
 	.org	$1000
@@ -81,7 +80,8 @@ SETUP:	SEI			;Disable interrupts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;WSTART -- War start the monitor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-WSTART:
+WSTART:	LDX	#$FF		;Reload stack pointer since
+	TXS			;we may have CANCELed
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CMDLP -- Small command processor loop
@@ -104,13 +104,11 @@ CMDLP:	LDA	#>WSTART	;Prime stack for RTS
 	LDY	#$FF		;Index before start of CMDTAB
 CMDLP1:	INY			;Point to next command char
 	CMP	CMDTAB, Y
-	BEQ	RUNCMD
-	PHA			;Save command letter
-	LDA	CMDTAB, Y
+	BEQ	RUNCMD		;Equal, handle it
+	LDX	CMDTAB, Y
 	BEQ	ERROR		;CMDTAB null terminator, error
-	PLA			;Restore command letter
-	INY			;Get past handler address
-	INY
+	INY			;Not done with CMDTAB, get past the
+	INY			;command handler address
 	JMP	CMDLP1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,10 +168,11 @@ GETADR:	JSR	GETHEX
 ;post: A register contains byte from hex input
 ;post: Carry flag set if non hex character received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GETHEX:	JSR	CIN
-GETHE2:	STA	NIBHI
-	JSR	CIN
+GETHEX:	JSR	CIN		;Get high ASCII nybble
+GETHE2:	PHA			;Save high nybble on stack
+	JSR	CIN		;Get low ASCII nybble
 	STA	NIBLO
+	PLA			;A = high nybble
 	JSR	HEXBYT
 	BCS	GETHE3
 	RTS
@@ -184,26 +183,24 @@ GETHE3:	JMP	ERROR
 ;
 ;Destroys contents of TEMP.
 ;
-;pre: NIBHI and NIBLO contain ASCII coded chars to convert
+;pre: A register contains ASCII coded high nybble
+;pre: NIBLO regsiter contains ASCII coded low nybble
 ;post: A register contains converted byte
 ;post: CY flag set if non-hex character input
 ;post: Z flag set if conversion results in 0x00
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-HEXBYT:	LDA	NIBHI
-	JSR	ASCHEX
-	BCC	HEXBY1
-	RTS
-HEXBY1:	ASL
+HEXBYT:	JSR	ASCHEX
+	BCS	HEXBY3		;CY set, invalid hex
+HEXBY1:	ASL			;Move high nybble up
 	ASL
 	ASL
 	ASL
 	STA	TEMP
 	LDA	NIBLO
 	JSR	ASCHEX
-	BCC	HEXBY2
-	RTS
-HEXBY2:	ORA	TEMP
-	RTS
+	BCS	HEXBY3		;CY set, invalid hex
+HEXBY2:	ORA	TEMP		;OR in high nybble
+HEXBY3:	RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;ASCHEX -- Convert ASCII character to hex nybble
@@ -320,9 +317,9 @@ PRTHEX: PHA			;Save A register on stack
 PRTNIB:	AND	#$0F
 	ORA	#'0'		;Add ASCII bias
 	CMP	#':'		;0x0 - 0x9?
-	BCC	COUT
+	BCC	PRTNI1
 	ADC	#$06		;Add hex bias
-	JMP	COUT
+PRTNI1:	JMP	COUT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;HDCMD -- Hex dump command
@@ -399,7 +396,7 @@ CMDTAB:	.byte	'd'
 ;Blocks until a character is available. Warm starts the
 ;monitor if the received character is the CANCEL char.
 ;
-;Falls through to COUT if the character received is not the
+;Branches to COUT if the character received is not the
 ;CANCEL character.
 ;
 ;pre: serial UART initialized
@@ -408,8 +405,8 @@ CMDTAB:	.byte	'd'
 ;post: monitor warm started if CANCEL received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CIN:	LDA	SCSR		;See if we got an incoming char
-	AND	#$01		;Test bit 0
-	BEQ	CIN		;Wait for character
+	LSR			;Test bit 0
+	BCC	CIN		;Wait for character
 	LDA	SCDAT		;Load char
 	CMP	#CANCEL		;CANCEL ASCII code?
 	BNE	COUT		;No, echo and return
@@ -429,6 +426,7 @@ COUT1:	LDA	SCSR		;Get UART status
 	BEQ	COUT1		;Transmitter busy, wait
 	PLA			;A = character to print
 	PHA			;Back on stack
+	AND	#$7F		;Strip high bit
 	STA	SCDAT		;Send it to UART
 	PLA			;A = original character to send
 	RTS
@@ -472,16 +470,14 @@ PRTCLS:	JSR	CRLF
 ;
 ;Destroys contents of Y register.
 ;
-;pre: STRLO, STRHI point to NULL terminated string
+;pre: STRLO, STRHI point to start of string
 ;post: string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTSTR:	LDY	#$FF		;Clear string position counter
 PRTST1:	INY
 	LDA	(STRLO), Y	;A = next char in string
-	AND	#$7F		;Strip terminating bit
 	JSR	COUT
-	LDA	(STRLO), Y
-	BPL	PRTST1
+	BPL	PRTST1		;Done if high bit is set
 	RTS 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
