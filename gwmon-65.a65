@@ -167,6 +167,7 @@ GETADR:	JSR	GETHEX
 ;pre: none
 ;post: A register contains byte from hex input
 ;post: Carry flag set if non hex character received
+;post: Z flag set if byte is 0x00
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GETHEX:	JSR	CIN		;Get high ASCII nybble
 GETHE2:	PHA			;Save high nybble on stack
@@ -373,6 +374,56 @@ GOCMD:	JSR	GETADR		;ADRLO, ADRHI = address to call
 	JMP	(ADRLO)		;Jump indirect to address read
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;LODCMD -- Load an Intel HEX file from console
+;
+;This loader accepts data with both CR (*NIX) and
+;CR,LF (DOS/Windows) terminated lines.
+;
+;Intel HEX record may be ended with:
+;
+;   * DATA (0x00) record with length of 0
+;   * Any nonzero record type
+;
+;post: Intel HEX file loaded, or error printed
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+LODCMD:	JSR	CRLF
+LODCM1:	JSR	CINNE
+	CMP	#':'
+	BNE	LODCM1		;Wait for start colon
+	JSR	COUT		;Print start colon
+	JSR	GETHEX		;Get record length
+	BEQ	LODCM4		;Length == 0, done
+;	MOV	B, A		;Record length in B
+;	MOV	C, A		;Start checksumming in C
+;
+;	CALL	GETADR		;HL = 16-bit starting address
+;	ADD	C		;A == L from GETADR
+;	ADD	H
+;	MOV	C, A		;Checksum
+;
+;	CALL	GETHEX		;Get record type
+;	JNZ	LODCM4		;Not Record Type 00 (DATA), done
+;	ADD	C
+;	MOV	C, A		;Checksum record type
+;LODCM2:	CALL	GETHEX		;This is the main record processing loop
+;	MOV	M, A		;Store char at HL
+;	ADD	C
+;	MOV	C, A		;Checksum
+;	INX	H		;Move memory pointer up
+;	DCR	B
+;	JNZ	LODCM2		;Not done with the line
+;LODCM3:	CALL	GETHEX		;Get checksum byte
+;	ADD	C
+;	JNZ	CSUMER		;Checksum bad, print error
+;	JMP	LODCMD		;Process more records
+LODCM4:	JSR	CIN		;Done getting data, eat chars
+	CMP	#LF
+	BNE	LODCM4		;No LF, keep eating
+	RTS			;Got LF, return to command loop
+;CSUMER:	LXI	H, CSERR$	;Print checksum error to console
+;	JMP	PRTERR		;RET from ERROUT will return to command loop
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CMDTAB -- Table/array of commands
 ;
 ;Table entry structure:
@@ -388,29 +439,40 @@ CMDTAB:	.byte	'd'
 	.word	EDTCMD
 	.byte	'g'
 	.word	GOCMD
+	.byte	'l'
+	.word	LODCMD
 	.byte	$00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;CIN -- Get a character from the console and echo
+;CIN -- Get a char from the console and echo
+;
+;Returns through COUT.
+;
+;pre: console device is initialized
+;post: received char is in A register
+;post: received char is echoed
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CIN:	JSR	CINNE
+	JMP	COUT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CINNE -- Get a character from the console, no echo
 ;
 ;Blocks until a character is available. Warm starts the
 ;monitor if the received character is the CANCEL char.
 ;
-;Branches to COUT if the character received is not the
-;CANCEL character.
-;
 ;pre: serial UART initialized
-;post: character is echoed to the console
 ;post: A register contains received character
 ;post: monitor warm started if CANCEL received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CIN:	LDA	SCSR		;See if we got an incoming char
+CINNE:	LDA	SCSR		;See if we got an incoming char
 	LSR			;Test bit 0
-	BCC	CIN		;Wait for character
+	BCC	CINNE		;Wait for character
 	LDA	SCDAT		;Load char
 	CMP	#CANCEL		;CANCEL ASCII code?
-	BNE	COUT		;No, echo and return
+	BNE	CINN1		;No, return
 	JMP	WSTART		;Yes, warm start	
+CINN1:	RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;COUT -- Print a character to the console
