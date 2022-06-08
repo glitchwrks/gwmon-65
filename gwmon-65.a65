@@ -468,22 +468,25 @@ CRLF:	LDA	#CR
 PRTCLS:	JSR	CRLF
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;PRTSTR -- Print a NULL-terminated string
+;PRTSTR -- Print a high bit terminated string
+;
+;Destroys contents of Y register.
 ;
 ;pre: STRLO, STRHI point to NULL terminated string
 ;post: string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-PRTSTR:	LDY	#$0		;Clear string position counter
-PRTST1:	LDA	(STRLO),Y	;A = next char in string
-	BEQ	PRTST2		;A = NULL, done
+PRTSTR:	LDY	#$FF		;Clear string position counter
+PRTST1:	INY
+	LDA	(STRLO), Y	;A = next char in string
+	AND	#$7F		;Strip terminating bit
 	JSR	COUT
-	INY			;Increment string position counter
-	BNE	PRTST1		;Not done, keep going
-PRTST2:	RTS 
+	LDA	(STRLO), Y
+	BPL	PRTST1
+	RTS 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Message Strings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-SIGNON:	.byte	"GWMON-65 0.1 SM", NULL
-PROMPT:	.byte	LF, '>', NULL
-ERRSTR:	.byte	"ERROR", NULL
+SIGNON:	.byte	"GWMON-65 0.1 S" ,'M' + $80
+PROMPT:	.byte	LF, '>' + $80
+ERRSTR:	.byte	"ERRO", 'R' + $80
