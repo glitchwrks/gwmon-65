@@ -45,6 +45,7 @@ NIBLO		= $54		;Low nybble for ASCII to hex conversion
 ENDLO		= $55		;Low address byte for two-address commands
 ENDHI		= $56		;High address byte for two-address commands
 CKSUM		= $57		;Checksum storage for Intel HEX loader
+CSFLAG		= $58		;Flag to indicate checksum failure
 TEMP		= $5F		;Temporary storage
 
 	.org	$1000
@@ -376,12 +377,20 @@ GOCMD:	JSR	GETADR		;ADRLO, ADRHI = address to call
 ;   * DATA (0x00) record with length of 0
 ;   * Any nonzero record type
 ;
-;post: Intel HEX file loaded, or error printed
+;Note that checksumming relies on the various routines that
+;read hex-formatted data from the console clearing the CY
+;bit as long as the ASCII coded hex chars are valid. We do
+;need to CLC before we ADC the second address byte.
+;
+;post: Intel HEX file loaded
+;post: erorr indication printed if a line contains errors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-LODCMD:	JSR	CRLF
-LODCM1:	JSR	CINNE
+LODCMD:	LDA	#$00		;Clear CSFLAG flag
+	STA	CSFLAG
+LODCM1:	JSR	CRLF
+LODCM2:	JSR	CINNE
 	CMP	#':'
-	BNE	LODCM1		;Wait for start colon
+	BNE	LODCM2		;Wait for start colon
 	JSR	COUT		;Print start colon
 	JSR	GETHEX		;Get record length
 	BEQ	LODCM4		;Length == 0, done
@@ -391,32 +400,36 @@ LODCM1:	JSR	CINNE
 
 	JSR	GETADR		;ADRLO, ADRHI = 16-bit starting address
 	ADC	CKSUM		;Checksum low address
+	CLC			;Clear any potential carry
 	ADC	ADRHI		;Checksum high address
 	STA	CKSUM		;Save CKSUM
 
 	JSR	GETHEX		;Get record type
 	BNE	LODCM4		;Not Record Type 00 (DATA), done
-	ADC	CKSUM
-	STA	CKSUM		;Checksum record type
 
-	LDY	#$00		;Initialize Y index
-LODCM2:	JSR	GETHEX		;This is the main record processing loop
+	TAY			;Set index to 0
+LODCM3:	JSR	GETHEX		;This is the main record processing loop
 	STA	(ADRLO), Y	;Store byte
 	ADC	CKSUM
 	STA	CKSUM		;Checksum data byte
 	INY			;Move memory pointer up
 	DEX			;Decrement record length counter
-	BNE	LODCM2		;Not done with the line
-LODCM3:	JSR	GETHEX		;Get checksum byte
+	BNE	LODCM3		;Not done with the line
+	JSR	GETHEX		;Get checksum byte
 	ADC	CKSUM
-	BNE	CSUMER		;Checksum bad, print error
-	BEQ	LODCMD		;Process more records
+	BEQ	LODCM1		;Process more records
+	LDA	#'*'		;Checksum bad, indicate it
+	STA	CSFLAG
+	JSR	COUT
+	JMP	LODCM1
 LODCM4:	JSR	CIN		;Done getting data, eat chars
 	CMP	#LF
 	BNE	LODCM4		;No LF, keep eating
-	RTS			;Got LF, return to command loop
-CSUMER:	LDY	#CSERR		;Y = offset to CKSUM ERR string
-	JMP	PRTERR		;PRTERR will warm start
+
+	LDA	CSFLAG		;Got LF, see if any checksum errors exist
+	BEQ	LODCM5		;No, done
+	JMP	ERROR		;Yes, tell us about it
+LODCM5:	RTS			;Got LF, return to command loop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CMDTAB -- Table/array of commands
