@@ -502,15 +502,13 @@ PRTSPC:	LDA	#' '
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CRLF -- Print a CR, LF
 ;
-;Returns through COUT.
+;Destorys Y register contents. Returns through COUT.
 ;
 ;pre: none
 ;post: CR, LF printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CRLF:	LDA	#CR
-	JSR	COUT
-	LDA	#LF
-	JMP	COUT
+CRLF:	LDY	CRLFST
+	JMP	PRTSTR
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTCLS -- Print CR, LF, and a high bit terminated string
@@ -528,7 +526,7 @@ PRTCLS:	JSR	CRLF
 ;Destroys contents of Y register.
 ;
 ;pre: Y register contains offset into STRNGS of string to be
-;     printed
+;     printed, minus one
 ;post: string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTSTR:	INY			;Point to start of string
@@ -556,3 +554,6 @@ CSERR		= * - STRNGS - 1
 
 ERRSTR		= * - STRNGS - 1
 	.byte	"ERRO", 'R' + $80
+
+CRLFST		= * - STRNGS - 1
+	.byte	CR, LF + $80
