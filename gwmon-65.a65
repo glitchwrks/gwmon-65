@@ -564,11 +564,24 @@ SIGNON		= ^(* - STRNGS - 1)
 PROMPT		= * - STRNGS - 1
 	.byte	LF, '>' + $80
 
-CSERR		= * - STRNGS - 1
-	.byte	"CKSUM "
-
 ERRSTR		= * - STRNGS - 1
 	.byte	"ERRO", 'R' + $80
 
-CRLFST		= * - STRNGS - 1
-	.byte	CR, LF + $80
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Pad out the monitor to 512 bytes for vector alignment, if
+;necessary. Warn if the monitor is larger than 512 bytes.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.IF (512 - (* - JMPTAB) - 6)
+	.WARNING "*** MONITOR EXCEEDS 512 BYTES ***"
+.ELSE
+	.REPEAT	(512 - (* - JMPTAB) - 6)
+		.byte $FF
+	.ENDREP
+.ENDIF
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Vectors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+VECTOR:	.word	SETUP
+	.word	SETUP
+	.word	SETUP
