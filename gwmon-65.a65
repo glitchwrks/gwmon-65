@@ -39,8 +39,6 @@ NEXTLOC		= CR		;Keystroke for next location in E
 ; * Stack located in zero page
 ; * I/O and control registers in zero page below 0x0040
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-STRLO		= $50		;Low string pointer for PRTSTR
-STRHI		= $51		;High string point for PRTSTR
 ADRLO		= $52		;Low address byte from GETADR
 ADRHI		= $53		;High address byte from GETADR
 NIBLO		= $54		;Low nybble for ASCII to hex conversion
@@ -72,10 +70,7 @@ SETUP:	SEI			;Disable interrupts
 	LDX	#$FF		;Set up stack pointer
 	TXS
 
-	LDA	#<SIGNON	;Set up pointers to signon message
-	STA	STRLO
-	LDA	#>SIGNON
-	STA	STRHI
+	LDY	#SIGNON		;Y = offset to SIGNON string
 	JSR	PRTCLS		;Print signon message
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -97,10 +92,7 @@ CMDLP:	LDA	#>WSTART	;Prime stack for RTS
 	LDA	#<WSTART-1	;Remember to decrement low byte!
 	PHA
 
-	LDA	#<PROMPT	;Set up pointers to command prompt
-	STA	STRLO
-	LDA	#>PROMPT
-	STA	STRHI
+	LDY	#PROMPT		;Y = offset to PROMPT string
 	JSR	PRTCLS		;Print command prompt
 	JSR	CIN
 	ORA	#$20		;Downcase input
@@ -120,10 +112,7 @@ CMDLP1:	INY			;Point to next command char
 ;
 ;Falls through to PRTERR.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-ERROR:	LDA	#<ERRSTR
-	STA	STRLO
-	LDA	#>ERRSTR
-	STA	STRHI
+ERROR:	LDY	#ERRSTR		;Y = offset to ERRSTR string
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTERR -- Print a null-terminated error string
@@ -426,10 +415,7 @@ LODCM4:	JSR	CIN		;Done getting data, eat chars
 	CMP	#LF
 	BNE	LODCM4		;No LF, keep eating
 	RTS			;Got LF, return to command loop
-CSUMER:	LDA	#<CSERR		;Print checksum error to console
-	STA	STRLO
-	LDA	#>CSERR
-	STA	STRHI
+CSUMER:	LDY	#CSERR		;Y = offset to CKSUM ERR string
 	JMP	PRTERR		;PRTERR will warm start
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -541,20 +527,32 @@ PRTCLS:	JSR	CRLF
 ;
 ;Destroys contents of Y register.
 ;
-;pre: STRLO, STRHI point to start of string
+;pre: Y register contains offset into STRNGS of string to be
+;     printed
 ;post: string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-PRTSTR:	LDY	#$FF		;Clear string position counter
-PRTST1:	INY
-	LDA	(STRLO), Y	;A = next char in string
+PRTSTR:	INY			;Point to start of string
+	LDA	STRNGS, Y	;A = next char in string
 	JSR	COUT
-	BPL	PRTST1		;Done if high bit is set
+	BPL	PRTSTR		;Done if high bit is set
 	RTS 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Message Strings
+;
+;These strings are indexed by the labels following STRNGS.
+;These indexes may be fed into PRTSTR, PRTCLS, or PRTERR in
+;the Y register.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-SIGNON:	.byte	"GWMON-65 0.1 S" ,'M' + $80
-PROMPT:	.byte	LF, '>' + $80
-CSERR:	.byte	"CKSUM "
-ERRSTR:	.byte	"ERRO", 'R' + $80
+STRNGS		= *
+SIGNON		= ^(* - STRNGS - 1)
+	.byte	"GWMON-65 0.1 S" ,'M' + $80
+
+PROMPT		= * - STRNGS - 1
+	.byte	LF, '>' + $80
+
+CSERR		= * - STRNGS - 1
+	.byte	"CKSUM "
+
+ERRSTR		= * - STRNGS - 1
+	.byte	"ERRO", 'R' + $80
