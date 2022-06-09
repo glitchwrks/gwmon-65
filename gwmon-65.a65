@@ -507,8 +507,10 @@ PRTSPC:	LDA	#' '
 ;pre: none
 ;post: CR, LF printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CRLF:	LDY	CRLFST
-	JMP	PRTSTR
+CRLF:	LDA	#CR
+	JSR	COUT
+	LDA	#LF
+	JMP	COUT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTCLS -- Print CR, LF, and a high bit terminated string
