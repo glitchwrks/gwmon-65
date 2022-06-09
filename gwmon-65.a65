@@ -46,6 +46,7 @@ ADRHI		= $53		;High address byte from GETADR
 NIBLO		= $54		;Low nybble for ASCII to hex conversion
 ENDLO		= $55		;Low address byte for two-address commands
 ENDHI		= $56		;High address byte for two-address commands
+CKSUM		= $57		;Checksum storage for Intel HEX loader
 TEMP		= $5F		;Temporary storage
 
 	.org	$1000
@@ -78,7 +79,9 @@ SETUP:	SEI			;Disable interrupts
 	JSR	PRTCLS		;Print signon message
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;WSTART -- War start the monitor
+;WSTART -- Warm start the monitor
+;
+;Falls through to the command processor
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 WSTART:	LDX	#$FF		;Reload stack pointer since
 	TXS			;we may have CANCELed
@@ -93,6 +96,7 @@ CMDLP:	LDA	#>WSTART	;Prime stack for RTS
 	PHA
 	LDA	#<WSTART-1	;Remember to decrement low byte!
 	PHA
+
 	LDA	#<PROMPT	;Set up pointers to command prompt
 	STA	STRLO
 	LDA	#>PROMPT
@@ -236,8 +240,7 @@ ASCHE2:	AND	#$5F		;Upcase
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 HEXDMP:	LDA	#$00		;Initialize TEMP as completion flag
 	STA	TEMP
-HEXDM1:	JSR	CRLF
-	JSR	PRTADR
+HEXDM1:	JSR	PRTADR
 	LDX	#16		;X = line loop counter
 HEXDM2:	JSR	PRTSPC
 	JSR	DMPLOC
@@ -263,15 +266,16 @@ HEXDM4:	DEX			;Decrement line loop counter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTADR -- Print an address to the console
 ;
-;Prints a 16-bit address, a space, and a colon. Destroys
-;A register contents.
+;Prints CR, LF, 16-bit address, a space, and a colon. 
+;Destroys A register contents.
 ;
 ;Returns through COUT.
 ;
 ;pre: ADRLO, ADRHI contains address to print
 ;post: address printed to console as hex
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-PRTADR: LDA	ADRHI
+PRTADR: JSR	CRLF
+	LDA	ADRHI
 	JSR	PRTHEX
 	LDA	ADRLO
 	JSR	PRTHEX
@@ -346,8 +350,7 @@ HDCMD:	JSR	GETADR		;ADRLO, ADRHI = start address
 ;WSTART.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 EDTCMD:	JSR	GETADR		;HL = address to open
-EDTCM1:	JSR	CRLF
-	JSR	PRTADR		;Print location address
+EDTCM1:	JSR	PRTADR		;Print location address
 	JSR	PRTSPC
 	JSR	DMPLOC		;Print contents of location
 	JSR	PRTSPC
@@ -393,35 +396,41 @@ LODCM1:	JSR	CINNE
 	JSR	COUT		;Print start colon
 	JSR	GETHEX		;Get record length
 	BEQ	LODCM4		;Length == 0, done
-;	MOV	B, A		;Record length in B
-;	MOV	C, A		;Start checksumming in C
-;
-;	CALL	GETADR		;HL = 16-bit starting address
-;	ADD	C		;A == L from GETADR
-;	ADD	H
-;	MOV	C, A		;Checksum
-;
-;	CALL	GETHEX		;Get record type
-;	JNZ	LODCM4		;Not Record Type 00 (DATA), done
-;	ADD	C
-;	MOV	C, A		;Checksum record type
-;LODCM2:	CALL	GETHEX		;This is the main record processing loop
-;	MOV	M, A		;Store char at HL
-;	ADD	C
-;	MOV	C, A		;Checksum
-;	INX	H		;Move memory pointer up
-;	DCR	B
-;	JNZ	LODCM2		;Not done with the line
-;LODCM3:	CALL	GETHEX		;Get checksum byte
-;	ADD	C
-;	JNZ	CSUMER		;Checksum bad, print error
-;	JMP	LODCMD		;Process more records
+
+	TAX			;Record length in X
+	STA	CKSUM		;Start checksumming in CKSUM
+
+	JSR	GETADR		;ADRLO, ADRHI = 16-bit starting address
+	ADC	CKSUM		;Checksum low address
+	ADC	ADRHI		;Checksum high address
+	STA	CKSUM		;Save CKSUM
+
+	JSR	GETHEX		;Get record type
+	BNE	LODCM4		;Not Record Type 00 (DATA), done
+	ADC	CKSUM
+	STA	CKSUM		;Checksum record type
+
+	LDY	#$00		;Initialize Y index
+LODCM2:	JSR	GETHEX		;This is the main record processing loop
+	STA	(ADRLO), Y	;Store byte
+	ADC	CKSUM
+	STA	CKSUM		;Checksum data byte
+	INY			;Move memory pointer up
+	DEX			;Decrement record length counter
+	BNE	LODCM2		;Not done with the line
+LODCM3:	JSR	GETHEX		;Get checksum byte
+	ADC	CKSUM
+	BNE	CSUMER		;Checksum bad, print error
+	BEQ	LODCMD		;Process more records
 LODCM4:	JSR	CIN		;Done getting data, eat chars
 	CMP	#LF
 	BNE	LODCM4		;No LF, keep eating
 	RTS			;Got LF, return to command loop
-;CSUMER:	LXI	H, CSERR$	;Print checksum error to console
-;	JMP	PRTERR		;RET from ERROUT will return to command loop
+CSUMER:	LDA	#<CSERR		;Print checksum error to console
+	STA	STRLO
+	LDA	#>CSERR
+	STA	STRHI
+	JMP	PRTERR		;PRTERR will warm start
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CMDTAB -- Table/array of commands
@@ -441,7 +450,7 @@ CMDTAB:	.byte	'd'
 	.word	GOCMD
 	.byte	'l'
 	.word	LODCMD
-	.byte	$00
+	.byte	NULL
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CIN -- Get a char from the console and echo
@@ -547,4 +556,5 @@ PRTST1:	INY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SIGNON:	.byte	"GWMON-65 0.1 S" ,'M' + $80
 PROMPT:	.byte	LF, '>' + $80
+CSERR:	.byte	"CKSUM "
 ERRSTR:	.byte	"ERRO", 'R' + $80
