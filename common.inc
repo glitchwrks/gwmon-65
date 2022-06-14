@@ -190,7 +190,7 @@ PRTSPC:	LDA	#' '
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CRLF -- Print a CR, LF
 ;
-;Destorys Y register contents. Returns through COUT.
+;Returns through COUT.
 ;
 ;pre: none
 ;post: CR, LF printed to console
