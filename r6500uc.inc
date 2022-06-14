@@ -37,9 +37,8 @@ CINNE:	LDA	SCSR		;See if we got an incoming char
 	BCC	CINNE		;Wait for character
 	LDA	SCDAT		;Load char
 	CMP	#CANCEL		;CANCEL ASCII code?
-	BNE	CINN1		;No, return
+	BNE	COUT2		;No, return using COUT's RTS
 	JMP	WSTART		;Yes, warm start	
-CINN1:	RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;COUT -- Print a character to the console
@@ -58,4 +57,4 @@ COUT1:	LDA	SCSR		;Get UART status
 	AND	#$7F		;Strip high bit
 	STA	SCDAT		;Send it to UART
 	PLA			;A = original character to send
-	RTS
+COUT2:	RTS
