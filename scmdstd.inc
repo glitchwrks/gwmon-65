@@ -29,7 +29,7 @@ HDCMD:	JSR	GETADR		;ADRLO, ADRHI = start address
 ;Breaks out to main command loop through GETHEX jump to
 ;WSTART.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-EDTCMD:	JSR	GETADR		;HL = address to open
+EDTCMD:	JSR	GETADR		;ADRLO, ADRHI = address to open
 EDTCM1:	JSR	PRTADR		;Print location address
 	JSR	PRTSPC
 	JSR	DMPLOC		;Print contents of location
