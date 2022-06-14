@@ -1,0 +1,31 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SMOSI1 -- GWMON-65 Small Monitor for Ohio Scientific
+;
+;This customization uses the onboard serial port on the
+;CPU.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Hardware Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CTLREG		= $FC00		;6850 ACIA control register
+DATREG		= $FC01		;6850 ACIA data register
+
+	.org	$1000
+
+	.include "jmptab.inc"	;Standard GWMON-65 jump table
+
+	.include "sm.inc"	;The small monitor
+	.include "scmdstd.inc"	;SM standard commands
+	.include "scmdnull.inc"	;Command table terminator
+
+	.include "6850acia.inc"	;Motorola 6850 ACIA driver
+
+	.include "512check.inc"	;512-byte limit checker
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Vectors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+VECTOR:	.word	SETUP
+	.word	SETUP
+	.word	SETUP

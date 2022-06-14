@@ -9,16 +9,18 @@ CA		= ca65
 CL		= cl65
 RM		= rm
 
-all: r65x1qsbc
+all: osi1 r65x1qsbc
 
-gwmon-65.hex: gwmon-65.bin
-	srec_cat gwmon-65.bin -binary -offset=0x1000 -o gwmon-65.hex -intel -address-length=2
+osi1: smosi1.hex
 
-gwmon-65.bin: gwmon-65.o
-	$(CL) $(LFLAGS) -o gwmon-65.bin gwmon-65.o
+smosi1.hex: smosi1.bin
+	srec_cat smosi1.bin -binary -offset=0x1000 -o smosi1.hex -intel -address-length=2
 
-gwmon-65.o: gwmon-65.a65
-	$(CA) $(AFLAGS) -l gwmon-65.lst -o gwmon-65.o gwmon-65.a65
+smosi1.bin: smosi1.o
+	$(CL) $(LFLAGS) -o smosi1.bin smosi1.o
+
+smosi1.o: smosi1.a65
+	$(CA) $(AFLAGS) -l smosi1.lst -o smosi1.o smosi1.a65
 
 r65x1qsbc: smr6501q.hex
 
