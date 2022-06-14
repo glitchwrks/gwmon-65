@@ -83,14 +83,12 @@ GETADR:	JSR	GETHEX
 ;
 ;pre: none
 ;post: A register contains byte from hex input
-;post: Carry flag set if non hex character received
+;post: Carry flag clear if valid hex character received
 ;post: Z flag set if byte is 0x00
+;post: abort through ERROR if invalid hex character received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GETHEX:	JSR	CIN		;Get high ASCII nybble
-GETHE2:	PHA			;Save high nybble on stack
+GETHE2:	STA	NIBHI		;Save high nybble
 	JSR	CIN		;Get low ASCII nybble
-	STA	NIBLO
-	PLA			;A = high nybble
 	JSR	HEXBYT
-	BCS	ERROR		;Invalid hex character
 	RTS

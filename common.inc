@@ -26,22 +26,21 @@ NEXTLOC		= CR		;Keystroke for next location in E
 ;
 ;Destroys contents of TEMP.
 ;
-;pre: A register contains ASCII coded high nybble
-;pre: NIBLO regsiter contains ASCII coded low nybble
-;post: A register contains converted byte
-;post: CY flag set if non-hex character input
+;pre: NIBHI contains ASCII coded high nybble
+;pre: A regsiter contains ASCII coded low nybble
+;post: A register contains converted byte if successful
+;post: CY flag cleared on successful conversion
 ;post: Z flag set if conversion results in 0x00
+;post: abort through ERROR if conversion fails
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-HEXBYT:	JSR	ASCHEX
-	BCS	HEXBY3		;CY set, invalid hex
-HEXBY1:	ASL			;Move high nybble up
+HEXBYT:	JSR	ASCHEX		;Convert low nybble
+	STA	TEMP		;Save it in TEMP
+HEXBY1:	LDA	NIBHI
+	JSR	ASCHEX		;Convert high nybble
+	ASL			;Shift high nybble up
 	ASL
 	ASL
 	ASL
-	STA	TEMP
-	LDA	NIBLO
-	JSR	ASCHEX
-	BCS	HEXBY3		;CY set, invalid hex
 HEXBY2:	ORA	TEMP		;OR in high nybble
 HEXBY3:	RTS
 
@@ -50,21 +49,20 @@ HEXBY3:	RTS
 ;
 ;pre: A register contains ASCII coded nybble
 ;post: A register contains nybble
-;post: CY flag set if ASCII character is invalid hex
+;post: CY flag clear if ASCII character is valid hex
+;post: abort through ERROR if ASCII character is invalid hex
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ASCHEX:	SEC
 	SBC	#'0'		;ASCII to decimal bias
-	BCS	ASCHE1
-	SEC			;Error, less than '0', done
-	RTS
+	BCC	ASCHE3		;Error, less than '0', done
 ASCHE1:	CMP	#$0A
-	BCS	ASCHE2
-	RTS			;0x0 - 0x9, done
+	BCC	HEXBY3		;0x0 - 0x9, return using HEXBYT's RTS
 ASCHE2:	AND	#$5F		;Upcase
 	SEC
 	SBC	#$07		;ASCII to hex bias
 	CMP	#$10
-	RTS
+	BCC	HEXBY3		;No error, return using HEXBYT's RTS
+ASCHE3:	JMP	ERROR		;Invalid hex character, abort
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;HEXDMP -- Hex dump memory to console

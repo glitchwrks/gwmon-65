@@ -17,7 +17,7 @@ ZPBASE		= $F0
 
 ADRLO		= ZPBASE+$2	;Low address byte from GETADR
 ADRHI		= ZPBASE+$3	;High address byte from GETADR
-NIBLO		= ZPBASE+$4	;Low nybble for ASCII to hex conversion
+NIBHI		= ZPBASE+$4	;Low nybble for ASCII to hex conversion
 ENDLO		= ZPBASE+$5	;Low address byte for two-address commands
 ENDHI		= ZPBASE+$6	;High address byte for two-address commands
 CKSUM		= ZPBASE+$7	;Checksum storage for Intel HEX loader
