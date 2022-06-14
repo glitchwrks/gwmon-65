@@ -28,7 +28,7 @@ ZPBASE		= $50		;Optional zero page offset
 	.include "scmdstd.inc"	;SM standard commands
 	.include "scmdnull.inc"	;Command table terminator
 
-	.include "r6500.inc"	;R6500 uC family driver
+	.include "r6500uc.inc"	;R6500 uC family driver
 
 	.include "512check.inc"	;512-byte limit checker
 
