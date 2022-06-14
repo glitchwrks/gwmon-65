@@ -12,6 +12,7 @@ The following customizations are available and can be built using `make` and the
 
 | Make Target | SM | XM | Description                                        |
 |-------------|:--:|:--:|----------------------------------------------------|
+| `osi1`      | Y  | N  | Ohio Scientific serial systems                     |
 | `r65x1qsbc` | Y  | N  | Glitch Works R65X1Q Single-Board Computer          |
 
 Components
@@ -50,7 +51,7 @@ I/O modules contain the routines necessary to initialize the console I/O device,
 
 ### Customizations
 
-Customizations tie together vectors, a core monitor, I/O module, and one or more command sets into a machine-specific implementation of GWMON-65. See `smr6501q.a65` for an example of a basic customization of the `SM` for the [Glitch Works R6501Q SBC](https://www.tindie.com/products/glitchwrks/glitch-works-r6501qr6511q-single-board-computer/) with the standard SM command set.
+Customizations tie together vectors, a core monitor, I/O module, and one or more command sets into a machine-specific implementation of GWMON-65. See `smr6501q.a65` for an example of a basic customization of the `SM` for the [Glitch Works R6501Q SBC](https://www.tindie.com/products/glitchwrks/glitch-works-r6501qr6511q-single-board-computer/) with the standard SM command set. See `smosi1.a65` for an example of a customization that requires I/O setup.
 
 Building GWMON-65
 -----------------
