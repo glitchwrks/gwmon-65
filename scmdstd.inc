@@ -111,7 +111,7 @@ LODCM3:	JSR	GETHEX		;This is the main record processing loop
 	LDA	#'*'		;Checksum bad, indicate it
 	STA	CSFLAG
 	JSR	COUT
-	JMP	LODCM1
+	BNE	LODCM1		;A = '*' from COUT, never $00
 LODCM4:	JSR	CIN		;Done getting data, eat chars
 	CMP	#LF
 	BNE	LODCM4		;No LF, keep eating
