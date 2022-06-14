@@ -22,18 +22,6 @@ NEXTLOC		= CR		;Keystroke for next location in E
 				;Defaults to CR
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;CIN -- Get a char from the console and echo
-;
-;Returns through COUT.
-;
-;pre: console device is initialized
-;post: received char is in A register
-;post: received char is echoed
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-CIN:	JSR	CINNE
-	JMP	COUT
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;HEXBYT -- Convert pair of ASCII characters to byte
 ;
 ;Destroys contents of TEMP.

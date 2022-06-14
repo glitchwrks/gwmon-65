@@ -41,6 +41,17 @@ CINNE:	LDA	SCSR		;See if we got an incoming char
 	JMP	WSTART		;Yes, warm start	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;CIN -- Get a char from the console and echo
+;
+;Falls through to COUT.
+;
+;pre: console device is initialized
+;post: received char is in A register
+;post: received char is echoed
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CIN:	JSR	CINNE
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;COUT -- Print a character to the console
 ;
 ;Strips parity, preserves A register.
