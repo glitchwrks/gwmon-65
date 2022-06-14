@@ -29,7 +29,7 @@ CMDLP1:	INY			;Point to next command char
 	BEQ	ERROR		;CMDTAB null terminator, error
 	INY			;Not done with CMDTAB, get past the
 	INY			;command handler address
-	JMP	CMDLP1
+	BNE	CMDLP1		;Y is never 0 here, always branch
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;ERROR -- Print generic error message and abort
@@ -92,6 +92,5 @@ GETHE2:	PHA			;Save high nybble on stack
 	STA	NIBLO
 	PLA			;A = high nybble
 	JSR	HEXBYT
-	BCS	GETHE3
+	BCS	ERROR		;Invalid hex character
 	RTS
-GETHE3:	JMP	ERROR
