@@ -205,8 +205,9 @@ CRLF:	LDA	#CR
 ;
 ;Falls through to PRTSTR
 ;
-;pre: HL contains pointer to start of string
-;post: CR, LF, and string at HL printed to console
+;pre: Y register contains offset into STRNGS of string to be
+;     printed, minus one
+;post: CR, LF, and string printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTCLS:	JSR	CRLF
 
