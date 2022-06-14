@@ -1,0 +1,40 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SMR6501Q -- GWMON-65 Small Monitor for R6501Q SBC
+;
+;This customization uses the onboard serial port on the
+;CPU.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Hardware Equates
+;
+;The Rockwell R6501 and R6511 are 6502 core, but zero page
+;has some differences:
+;
+; * RAM starts at 0x0040, internal to CPU
+; * Stack located in zero page
+; * I/O and control registers in zero page below 0x0040
+;
+;We set ZPBASE to $50 to avoid both the bottom of zero page,
+;as well as monitor variables for eWoz.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ZPBASE		= $50		;Optional zero page offset
+
+	.org	$1000
+
+	.include "jmptab.inc"	;Standard GWMON-65 jump table
+
+	.include "sm.inc"	;The small monitor
+	.include "scmdstd.inc"	;SM standard commands
+	.include "scmdnull.inc"	;Command table terminator
+
+	.include "r6500.inc"	;R6500 uC family driver
+
+	.include "512check.inc"	;512-byte limit checker
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Vectors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+VECTOR:	.word	SETUP
+	.word	SETUP
+	.word	SETUP
