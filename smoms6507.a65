@@ -1,0 +1,41 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SM6507SB -- GWMON-65 Small Monitor for 6507 SBC
+;
+;This customization uses the 6551 ACIA present on Bill
+;O'Neill's Omega Micro Systems 6507 single-board computer.
+;It is intended to be ROMed in one half of a 2764 type 
+;EPROM. The SBC provides a switch for selecting whether the
+;top or bottom half of the EPROM is active.
+;
+;The bottom 1K of ROM is masked by I/O area, leaving 3K for
+;programs.
+;
+;It does not matter which half this monitor is programmed
+;in to.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Hardware Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ACIABASE	= $1200		;6551 ACIA base address
+
+	.segment "ROM_CODE"	;See oms6507sbc.cfg
+
+	.include "jmptab.inc"	;Standard GWMON-65 jump table
+
+	.include "sm.inc"	;The small monitor
+	.include "scmdstd.inc"	;SM standard commands
+	.include "scmdnull.inc"	;Command table terminator
+
+	.include "6551acia.inc"	;Motorola 6850 ACIA driver
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;NMI, Reset, and IRQ Vectors
+;
+;We require vectors are GWMON-65 is going to be ROMed.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.segment "VECTORS"
+
+	.word	SETUP
+	.word	SETUP
+	.word	SETUP

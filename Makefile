@@ -2,14 +2,23 @@ SHELL		:= /bin/bash
 
 AFLAGS		= -t none
 LFLAGS		= -t none
-RMFLAGS		= -f
 
 CC		= cc65
 CA		= ca65
 CL		= cl65
-RM		= rm
 
-all: osi1 r65x1qsbc
+all: oms6507sbc osi1 r65x1qsbc
+
+oms6507sbc: smoms6507.hex
+
+smoms6507.hex: smoms6507.bin
+	srec_cat smoms6507.bin -binary -offset 0x1400 -fill 0xFF 0x0000 0x1400 -o smoms6507.hex -intel -address-length=2
+
+smoms6507.bin: smoms6507.o
+	$(CL) $(LFLAGS) -C oms6507sbc.cfg -o smoms6507.bin smoms6507.o
+
+smoms6507.o: smoms6507.a65
+	$(CA) $(AFLAGS) -l smoms6507.lst -o smoms6507.o smoms6507.a65
 
 osi1: smosi1.hex
 
@@ -34,6 +43,6 @@ smr6501q.o: smr6501q.a65
 	$(CA) $(AFLAGS) -l smr6501q.lst -o smr6501q.o smr6501q.a65
 
 clean:
-	$(RM) $(RMFLAGS) *.o *.bin *.hex *.lst
+	rm -f *.o *.bin *.hex *.lst
 
 distclean: clean
