@@ -12,6 +12,7 @@ The following customizations are available and can be built using `make` and the
 
 | Make Target | SM | XM | Description                                        |
 |-------------|:--:|:--:|----------------------------------------------------|
+| `oms6507sbc`| Y  | N  | Omega Micro Systems 6507 Single-Board Computer     |
 | `osi1`      | Y  | N  | Ohio Scientific serial systems                     |
 | `r65x1qsbc` | Y  | N  | Glitch Works R65X1Q Single-Board Computer          |
 
