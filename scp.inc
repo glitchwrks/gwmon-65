@@ -9,7 +9,7 @@
 ;CMDLP -- Small command processor loop
 ;
 ;Get a character from the console device and immediately
-;hande it by passing off to helper function.
+;handle it by passing off to helper function.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CMDLP:	LDA	#>WSTART	;Prime stack for RTS
 	PHA
@@ -39,9 +39,9 @@ CMDLP1:	INY			;Point to next command char
 ERROR:	LDY	#ERRSTR		;Y = offset to ERRSTR string
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;PRTERR -- Print a null-terminated error string
+;PRTERR -- Print a high bit terminated error string
 ;
-;pre: STRLO, STRHI point to a null-terminated string
+;pre: STRLO, STRHI point to a high bit terminated string
 ;post: string at STRLO, STRHI printed to console
 ;post: program execution returned to command loop   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;SM6507SB -- GWMON-65 Small Monitor for 6507 SBC
+;SMOMS6507 -- GWMON-65 Small Monitor for 6507 SBC
 ;
 ;This customization uses the 6551 ACIA present on Bill
 ;O'Neill's Omega Micro Systems 6507 single-board computer.
