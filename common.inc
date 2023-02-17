@@ -116,7 +116,7 @@ PRTADR: JSR	CRLF
 	LDA	ADRLO
 	JSR	PRTHEX
 	LDA	#':'
-	JMP	COUT
+	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;DMPLOC -- Print a byte at ADRLO, ADRHI to console
@@ -160,7 +160,7 @@ PRTNIB:	AND	#$0F
 	CMP	#':'		;0x0 - 0x9?
 	BCC	PRTNI1
 	ADC	#$06		;Add hex bias
-PRTNI1:	JMP	COUT
+PRTNI1:	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTSPC -- Print a space to the console
@@ -171,7 +171,8 @@ PRTNI1:	JMP	COUT
 ;post: ASCII space printed to console
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRTSPC:	LDA	#' '
-	JMP	COUT
+PRTSP1:	JMP	COUT		;Other routines branch relative here to
+				;get to COUT. Saves bytes.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;CRLF -- Print a CR, LF
@@ -184,7 +185,7 @@ PRTSPC:	LDA	#' '
 CRLF:	LDA	#CR
 	JSR	COUT
 	LDA	#LF
-	JMP	COUT
+	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTCLS -- Print CR, LF, and a high bit terminated string
