@@ -119,7 +119,7 @@ PRTADR: JSR	CRLF
 	JMP	COUT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;DMPLOC -- Print a byte at HL to console
+;DMPLOC -- Print a byte at ADRLO, ADRHI to console
 ;
 ;Destroys A and Y register contents.
 ;
