@@ -27,7 +27,7 @@ ACIABASE	= $1200		;6551 ACIA base address
 	.include "scmdstd.inc"	;SM standard commands
 	.include "scmdnull.inc"	;Command table terminator
 
-	.include "6551acia.inc"	;Motorola 6850 ACIA driver
+	.include "6551acia.inc"	;6551 ACIA driver
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;NMI, Reset, and IRQ Vectors
