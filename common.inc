@@ -211,4 +211,3 @@ PRTSTR:	INY			;Point to start of string
 	JSR	COUT
 	BPL	PRTSTR		;Done if high bit is set
 	RTS
- 
