@@ -32,7 +32,7 @@ ACIABASE	= $1200		;6551 ACIA base address
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;NMI, Reset, and IRQ Vectors
 ;
-;We require vectors are GWMON-65 is going to be ROMed.
+;We require vectors as GWMON-65 is going to be ROMed.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.segment "VECTORS"
 
