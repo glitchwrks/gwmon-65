@@ -3,7 +3,7 @@ GWMON-65
 
 GWMON-65 is intended to be a simple ROM-type system monitor for systems utilizing processors that are compatible with the MOS 6502, including (but not limited to) R6501 and R6511 systems. It is written in a modular format so that it can be extended for use with specific system hardware with ease. It is being developed and released under the GNU GPLv3 as open source software (see LICENSE in project root for more information).
 
-This is a WIP port of [GWMON-80](https://github.com/glitchwrks/gwmon-80). *It is definitely not ready for any sort of non-experimental use!*
+GWMON-65 is a port of [GWMON-80](https://github.com/glitchwrks/gwmon-80).
 
 Available Customizations
 ------------------------
@@ -12,6 +12,7 @@ The following customizations are available and can be built using `make` and the
 
 | Make Target | SM | XM | Description                                        |
 |-------------|:--:|:--:|----------------------------------------------------|
+| `gw6502sbc1`| Y  | N  | Glitch Works 6502 Single-Board Computer rev 1      |
 | `oms6507sbc`| Y  | N  | Omega Micro Systems 6507 Single-Board Computer     |
 | `osi1`      | Y  | N  | Ohio Scientific serial systems                     |
 | `r65x1qsbc` | Y  | N  | Glitch Works R65X1Q Single-Board Computer          |
