@@ -29,7 +29,7 @@ TEMP		= ZPBASE+$7	;Temporary storage
 ;
 ;Falls through to WSTART.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-SETUP:	SEI			;Disable interrupts
+SMSTRT:	SEI			;Disable interrupts
 	CLD			;Clear decimal arithmetic mode.
 	LDX	#$FF		;Set up stack pointer
 	TXS
