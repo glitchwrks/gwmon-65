@@ -9,9 +9,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Hardware Equates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-IOBASE		= $EF00		;I/O page base address
-ACIABASE	= IOBASE	;6551 ACIA base address
-VIABASE		= IOBASE+$F0	;6522 VIA base address
+IOPAGE		= $EF00		;I/O page base address
+ACIABASE	= IOPAGE	;6551 ACIA base address
+VIABASE		= IOPAGE+$F0	;6522 VIA base address
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;High RAM Storage
@@ -43,6 +43,9 @@ GWTDRE:	.include "wdcdect.inc"	;Detect buggy WDC 6551 ACIA
 
 	.include "sm.inc"	;The small monitor
 	.include "scmdstd.inc"	;SM standard commands
+	.include "scmdio.inc"	;SM I/O commands
 	.include "scmdnull.inc"	;Command table terminator
+
+	.include "iocmd.inc"	;I/O commands implementation
 
 	.include "wdcacia.inc"	;6551 ACIA driver with WDC TDRE bug mitigation
