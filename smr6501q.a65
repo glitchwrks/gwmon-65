@@ -35,6 +35,6 @@ ZPBASE		= $50		;Optional zero page offset
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Vectors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-VECTOR:	.word	SETUP
-	.word	SETUP
-	.word	SETUP
+VECTOR:	.word	CSTART
+	.word	CSTART
+	.word	CSTART

@@ -36,6 +36,6 @@ ACIABASE	= $1200		;6551 ACIA base address
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.segment "VECTORS"
 
-	.word	SETUP
-	.word	SETUP
-	.word	SETUP
+	.word	CSTART
+	.word	CSTART
+	.word	CSTART

@@ -26,6 +26,6 @@ DATREG		= $FC01		;6850 ACIA data register
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Vectors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-VECTOR:	.word	SETUP
-	.word	SETUP
-	.word	SETUP
+VECTOR:	.word	CSTART
+	.word	CSTART
+	.word	CSTART
