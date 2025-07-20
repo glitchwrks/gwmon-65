@@ -116,7 +116,7 @@ PRTADR: JSR	CRLF
 	LDA	ADRLO
 	JSR	PRTHEX
 	LDA	#':'
-	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
+	BNE	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;DMPLOC -- Print a byte at ADRLO, ADRHI to console
@@ -158,9 +158,9 @@ PRTHEX: PHA			;Save A register on stack
 PRTNIB:	AND	#$0F
 	ORA	#'0'		;Add ASCII bias
 	CMP	#':'		;0x0 - 0x9?
-	BCC	PRTNI1
+	BCC	PRTSP1		;Branch to COUT thru PRTSPC
 	ADC	#$06		;Add hex bias
-PRTNI1:	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
+PRTNI1:	BNE	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTSPC -- Print a space to the console
@@ -185,7 +185,7 @@ PRTSP1:	JMP	COUT		;Other routines branch relative here to
 CRLF:	LDA	#CR
 	JSR	COUT
 	LDA	#LF
-	BEQ	PRTSP1		;Branch to COUT thru PRTSPC
+	BNE	PRTSP1		;Branch to COUT thru PRTSPC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;PRTCLS -- Print CR, LF, and a high bit terminated string
