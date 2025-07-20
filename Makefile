@@ -12,7 +12,7 @@ all: gw6502sbc1 oms6507sbc osi1 r65x1qsbc
 gw6502sbc1: smgw6502sbc1.hex
 
 smgw6502sbc1.hex: smgw6502sbc1.bin
-	srec_cat smgw6502sbc1.bin -binary -crop 0xd00 -offset 0xf000 -o smgw6502sbc1.hex -intel -address-length=2
+	srec_cat smgw6502sbc1.bin -binary -offset 0xfd00 -o smgw6502sbc1.hex -intel -address-length=2
 
 smgw6502sbc1.bin: smgw6502sbc1.o gw6502sbc1.cfg
 	$(CL) $(LFLAGS) -C gw6502sbc1.cfg -o smgw6502sbc1.bin smgw6502sbc1.o
