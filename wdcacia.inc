@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;WDCACIA -- Console I/O Drivers for WDC 6551 ACIA
 ;
-;This driver is a universal 6551 ACIA drive, and will work
+;This driver is a universal 6551 ACIA driver, and will work
 ;with WDC 6551 parts with the TDRE flag bug.
 ;
 ;Set ACIABASE and VIABASE in the customization file.
