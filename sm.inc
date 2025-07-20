@@ -15,14 +15,14 @@
 ZPBASE		= $F0
 .ENDIF
 
-ADRLO		= ZPBASE+$2	;Low address byte from GETADR
-ADRHI		= ZPBASE+$3	;High address byte from GETADR
-NIBHI		= ZPBASE+$4	;Low nybble for ASCII to hex conversion
-ENDLO		= ZPBASE+$5	;Low address byte for two-address commands
-ENDHI		= ZPBASE+$6	;High address byte for two-address commands
-CKSUM		= ZPBASE+$7	;Checksum storage for Intel HEX loader
-CSFLAG		= ZPBASE+$8	;Flag to indicate checksum failure
-TEMP		= ZPBASE+$F	;Temporary storage
+ADRLO		= ZPBASE	;Low address byte from GETADR
+ADRHI		= ZPBASE+$1	;High address byte from GETADR
+NIBHI		= ZPBASE+$2	;Low nybble for ASCII to hex conversion
+ENDLO		= ZPBASE+$3	;Low address byte for two-address commands
+ENDHI		= ZPBASE+$4	;High address byte for two-address commands
+CKSUM		= ZPBASE+$5	;Checksum storage for Intel HEX loader
+CSFLAG		= ZPBASE+$6	;Flag to indicate checksum failure
+TEMP		= ZPBASE+$7	;Temporary storage
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;SETUP -- Prepare hardware, print monitor sign-on message
