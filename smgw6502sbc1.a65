@@ -1,0 +1,48 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SMGW6502SBC1 -- GWMON-65 Small Monitor for GW-6502SBC-1
+;
+;This customization uses the onboard ACIA on the Glitch
+;Works 6502 SBC rev 1 for console. It is intended to be run
+;from the top of the 512K Flash chip.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Hardware Equates
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+IOBASE		= $EF00		;I/O page base address
+ACIABASE	= IOBASE	;6551 ACIA base address
+VIABASE		= IOBASE+$F0	;6522 VIA base address
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;High RAM Storage
+;
+;These variables are stored in high RAM so that ROM routines
+;that depend on them will still work without worrying about
+;exclusive control over zero page. We reference them here to
+;provide linkage with the 6502 SBC bootstrap.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+VARBASE		= $EEF0		;Use 16 bytes below I/O page
+ACIAOK		= VARBASE+7	;ACIA TDRE bug status, 0 = TDRE works
+
+ZPBASE		= $DF		;Relocate zero page to avoid EhBASIC
+
+	.segment "GWMON_CODE"	;See gw6502sbc1.cfg
+
+	.include "jmptab.inc"	;Standard GWMON-65 jump table
+
+	JMP	SMSTRT		;Jump around ACIA detection to SM
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;GWTDRE -- Detect buggy WDC 6551 ACIAs
+;
+;Linkage to WDCDECT is provided here for the SBC bootstrap
+;routine, when needs to initialize the ACIA before loading
+;GWMON-65.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GWTDRE:	.include "wdcdect.inc"	;Detect buggy WDC 6551 ACIA
+
+	.include "sm.inc"	;The small monitor
+	.include "scmdstd.inc"	;SM standard commands
+	.include "scmdnull.inc"	;Command table terminator
+
+	.include "wdcacia.inc"	;6551 ACIA driver with WDC TDRE bug mitigation
