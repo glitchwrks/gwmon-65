@@ -107,6 +107,18 @@ After invoking the loader, paste your Intel HEX file into the terminal or do an 
 
 If input or checksum errors are encountered, an asterisk will be printed on the offending line, and `ERROR` will be printed after the hex load completes.
 
+SM I/O Commands
+---------------
+
+The Small Monitor (`SM`) supports an I/O command set, provided in `scmdio.inc` and `iocmd.inc`. This command set provides shorthand I/O read and write for systems with a fixed 256-byte I/O page in the memory map, such as the [Glitch Works GW-6502SBC-1](https://www.tindie.com/products/glitchwrks/glitch-works-6502-single-board-computer/). The I/O commands follow [GWMON-80](https://github.com/glitchwrks/gwmon-80) syntax:
+
+    I XX            Input from I/O port XX and display as hex
+    O XX YY         Output to I/O port XX byte YY
+
+`IOPAGE` must be defined in the customization. For Glitch Works boards, the default I/O page is `0xEF00`. When an `I` or `O` command is executed, a memory access is made to the I/O page with the low address byte specified in the command (`XX` above). For example, the command sequence `I01` would result in a memory read from `0xEF01`.
+
+See `smgw6502sbc1.a65` for an example implementation.
+
 Building GWMON-65
 -----------------
 
